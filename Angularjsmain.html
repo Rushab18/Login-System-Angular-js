@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="loginApp">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Login App</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular-animate.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            /* Change background image to the hosted image URL */
+            background-image: url('https://cdn.pixabay.com/photo/2020/02/28/15/41/security-4887764_960_720.jpg');
+            background-size: cover;
+            background-repeat: no-repeat;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        form {
+            background-color: rgba(255, 255, 255, 0.8);
+            /* Semi-transparent white */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 300px;
+        }
+
+        h2 {
+            color: #e74c3c;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 16px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #2ecc71;
+            color: #fff;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button[disabled] {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #message {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .animated {
+            animation-duration: 0.5s;
+            animation-fill-mode: both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
+
+        .fadeIn {
+            animation-name: fadeIn;
+        }
+
+        .fadeOut {
+            animation-name: fadeOut;
+        }
+        .corner-button {
+            position: fixed;
+            top: 20px; /* Adjust this value to change the distance from the top */
+            right: 20px; /* Adjust this value to change the distance from the right */
+            z-index: 9999; /* Ensure the button appears above other content */
+        }
+
+        .corner-button a {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #000000; /* Change this to your desired button color */
+            color: #fff; /* Change this to your desired text color */
+            text-decoration: none;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .corner-button a:hover {
+            background-color: #0056b3; /* Change this to your desired button color on hover */
+        }
+
+    </style>
+</head>
+
+<body ng-controller="LoginController">
+    <div class="corner-button">
+        <a href="file:///C:/Users/Hp/OneDrive/Desktop/My%20projects/Copies/Angularjsmain2.html" target="_blank">About Us</a>
+    </div>
+
+    <form class="animated" ng-class="{'fadeIn': formVisible, 'fadeOut': !formVisible}" name="loginForm" ng-submit="login()" novalidate>
+        <h2>Login</h2>
+
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" ng-model="username" required>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" ng-model="password" required>
+
+        <!-- CAPTCHA Code -->
+        <div style="display: flex; align-items: center;"> <!-- Flex container for CAPTCHA image and refresh button -->
+            <img ng-src="{{ captchaImage }}" alt="CAPTCHA Image" width="100" height="50" style="margin-right: 10px;">
+            <button type="button" ng-click="refreshCaptcha()" ng-disabled="refreshingCaptcha">
+                <span ng-if="refreshingCaptcha">Refreshing...</span>
+                <span ng-if="!refreshingCaptcha">Refresh</span>
+            </button>
+        </div>
+        <label for="captchaInput">Enter the captcha:</label>
+        <input type="text" id="captchaInput" name="captchaInput" ng-model="captchaInput" required>
+        <!-- End of CAPTCHA Code -->
+
+        <button type="submit">Login</button>
+        <button type="button" ng-click="toggleCreateAccountForm()">Create Account</button>
+
+        <div id="message">{{ message }}</div>
+    </form>
+
+    <!-- Create Account Form (Initially Hidden) -->
+    <div class="animated" ng-class="{'fadeIn': createAccountFormVisible, 'fadeOut': !createAccountFormVisible}">
+        <form name="createAccountForm" ng-submit="createAccount()" novalidate>
+            <h2>Create Account</h2>
+
+            <label for="newUsername">Username:</label>
+            <input type="text" id="newUsername" name="newUsername" ng-model="newUsername" required>
+
+            <label for="newPassword">Password (more than 5 characters):</label>
+            <input type="password" id="newPassword" name="newPassword" ng-model="newPassword" required ng-minlength="6">
+
+            <button type="submit" ng-disabled="createAccountForm.$invalid">Create Account</button>
+            <button type="button" ng-click="toggleCreateAccountForm()">Cancel</button>
+        </form>
+    </div>
+    <!-- End of Create Account Form -->
+
+    <script>
+        var app = angular.module('loginApp', ['ngAnimate']);
+
+        app.controller('LoginController', function ($scope, $window, $timeout) {
+            // Initialize an empty array for users
+            var users = [];
+
+            // Function to dynamically add 'n' number of users
+            function generateUsers(n) {
+                for (var i = 1; i <= n; i++) {
+                    users.push({ username: 'user' + i, password: 'pass' + i });
+                }
+            }
+
+            // Call the function to generate users with 'n' value
+            generateUsers(5); // Change 5 to any number 'n' you desire
+
+            var createdAccounts = []; // Array to store created accounts
+
+            var captchaValues = ['qGphJD', '51515', '436359', '892669']; // CAPTCHA values for respective images
+            var captchaImages = ['https://www.technotification.com/wp-content/uploads/2014/12/captcha.jpg',
+                'https://th.bing.com/th/id/R.70c57756af73ec2ccc2faf454eac71a6?rik=zuyjyX48UekFeQ&riu=http%3a%2f%2fwww.codeproject.com%2fKB%2faspnet%2fAntiBot__quot_CAPTCHA_quo%2flarge_captcha.jpg&ehk=Y9iywMP64sdwFSmlR3gka3XLEZ8KFXB7PfbMlVOCJ9Q%3d&risl=&pid=ImgRaw&r=0',
+                'https://i.stack.imgur.com/2CeAL.png',
+                'https://th.bing.com/th/id/OIP._UcnhRGYfbNCdsUuSPaTTwAAAA?rs=1&pid=ImgDetMain',
+            ];
+
+            $scope.captchaImage = captchaImages[0]; // Initial image path
+            $scope.message = '';
+            $scope.formVisible = true;
+            $scope.createAccountFormVisible = false;
+            $scope.refreshingCaptcha = false;
+
+            $scope.login = function () {
+                var user = users.find(function (u) {
+                    return u.username === $scope.username && u.password === $scope.password;
+                });
+
+                var createdUser = createdAccounts.find(function (u) {
+                    return u.username === $scope.username && u.password === $scope.password;
+                });
+
+                if (captchaValues.includes($scope.captchaInput) && (user || createdUser)) {
+                    // Clear username and captcha fields
+                    $scope.username = '';
+                    $scope.password = '';
+                    $scope.captchaInput = '';
+
+                    // Show login successful message
+                    $scope.message = 'Login successful. Redirecting...';
+
+                    // Redirect after a delay
+                    $timeout(function () {
+                        $window.location.href = 'https://kleit.ac.in/'; // Replace with desired URL
+                    }, 2000); // Adjust delay time (in milliseconds) as needed
+                } else {
+                    $window.alert('Login failed. Incorrect CAPTCHA code or credentials.');
+                    $scope.message = 'Login failed. Incorrect CAPTCHA code or credentials.';
+                }
+            };
+
+            $scope.refreshCaptcha = function () {
+                $scope.refreshingCaptcha = true;
+                $timeout(function () {
+                    var randomIndex = Math.floor(Math.random() * captchaImages.length);
+                    $scope.captchaImage = captchaImages[randomIndex];
+                    $scope.captchaInput = '';
+                    $scope.refreshingCaptcha = false;
+                }, 2000); // Delay time for refresh operation (in milliseconds)
+            };
+
+            $scope.toggleCreateAccountForm = function () {
+                $scope.createAccountFormVisible = !$scope.createAccountFormVisible;
+                $scope.formVisible = !$scope.formVisible;
+            };
+
+            $scope.createAccount = function () {
+                var existingUser = users.find(function (u) {
+                    return u.username === $scope.newUsername;
+                });
+
+                var existingCreatedUser = createdAccounts.find(function (u) {
+                    return u.username === $scope.newUsername;
+                });
+
+                if (existingUser || existingCreatedUser) {
+                    $scope.message = 'Username already exists. Please choose a different username.';
+                    $window.alert('Username already exists. Please choose a different username.');
+                } else {
+                    createdAccounts.push({ username: $scope.newUsername, password: $scope.newPassword });
+                    $scope.message = 'Account created successfully.';
+                    $window.alert('Account created successfully.');
+                    $scope.toggleCreateAccountForm();
+                }
+
+                $scope.newUsername = '';
+                $scope.newPassword = '';
+            };
+        });
+    </script>
+</body>
+
+</html>
